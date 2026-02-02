@@ -1,0 +1,256 @@
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap");
+
+:root {
+  --brand-blue: #2c5fc3;
+  --brand-blue-dark: #214a99;
+  --ink: #0b0f1a;
+  --ink-soft: #30384f;
+  --line: #d6deee;
+  --paper: #f7f9fc;
+  --card: #ffffff;
+  --accent: #eaf0ff;
+  --success: #2e7d32;
+  --warning: #c67d14;
+  --danger: #b42318;
+  --shadow: 0 22px 60px rgba(10, 30, 80, 0.12);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: "Space Grotesk", system-ui, -apple-system, sans-serif;
+  color: var(--ink);
+  background: radial-gradient(circle at top left, #f0f5ff 0%, #ffffff 52%, #f4f7fb 100%);
+  min-height: 100vh;
+}
+
+.app-shell {
+  min-height: 100vh;
+  padding: 32px;
+}
+
+main {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font-family: inherit;
+}
+
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.brand-mark {
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  background: var(--brand-blue);
+  color: #fff;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  letter-spacing: 0.04em;
+}
+
+.brand h1 {
+  font-size: 26px;
+  font-weight: 700;
+}
+
+.badge {
+  background: var(--accent);
+  color: var(--brand-blue-dark);
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 24px;
+  box-shadow: var(--shadow);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+}
+
+.section-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  margin-bottom: 6px;
+}
+
+.field {
+  width: 100%;
+  border: 1px solid var(--line);
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-size: 14px;
+  background: #fff;
+}
+
+.field:focus {
+  outline: 2px solid rgba(44, 95, 195, 0.18);
+  border-color: var(--brand-blue);
+}
+
+.button {
+  border: none;
+  padding: 12px 18px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.button-primary {
+  background: var(--brand-blue);
+  color: #fff;
+  box-shadow: 0 12px 24px rgba(44, 95, 195, 0.25);
+}
+
+.button-secondary {
+  background: #fff;
+  border: 1px solid var(--line);
+  color: var(--ink);
+}
+
+.button-ghost {
+  background: transparent;
+  color: var(--brand-blue-dark);
+}
+
+.button:hover {
+  transform: translateY(-1px);
+}
+
+.helper {
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.status-draft {
+  background: #f1f2f4;
+  color: #5b6577;
+}
+
+.status-review {
+  background: #fff4e5;
+  color: var(--warning);
+}
+
+.status-approved {
+  background: #e7f6ed;
+  color: var(--success);
+}
+
+.post-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.post-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.post-meta {
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.post-copy {
+  white-space: pre-wrap;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+
+.comment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.comment-item {
+  background: var(--paper);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  gap: 24px;
+}
+
+@media (max-width: 900px) {
+  .app-shell {
+    padding: 20px;
+  }
+
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .split {
+    grid-template-columns: 1fr;
+  }
+}
