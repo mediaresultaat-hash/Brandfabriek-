@@ -33,11 +33,13 @@ export default function Dashboard() {
     status: "review",
     copy: "",
     assets: "",
-    media: []
+    media: [],
+    client_id: ""
   });
   const [commentDrafts, setCommentDrafts] = useState({});
   const [clientForm, setClientForm] = useState({ username: "", password: "" });
   const [uploading, setUploading] = useState(false);
+  const [clients, setClients] = useState([]);
 
   useEffect(() => {
     let mounted = true;
@@ -52,7 +54,7 @@ export default function Dashboard() {
       if (mounted) {
         setUser(payload.user);
       }
-      await fetchPosts();
+      await Promise.all([fetchPosts(), fetchClients()]);
     };
 
     init();
@@ -73,6 +75,13 @@ export default function Dashboard() {
       setPosts(payload.posts || []);
     }
     setLoading(false);
+  };
+
+  const fetchClients = async () => {
+    const response = await fetch("/api/clients");
+    if (!response.ok) return;
+    const payload = await response.json();
+    setClients(payload.clients || []);
   };
 
   const handleSignOut = async () => {
@@ -139,7 +148,8 @@ export default function Dashboard() {
         status: "review",
         copy: "",
         assets: "",
-        media: []
+        media: [],
+        client_id: ""
       });
       if (fileInput) fileInput.value = "";
       await fetchPosts();
@@ -233,92 +243,115 @@ export default function Dashboard() {
       </div>
 
       <div className="split">
-        <section className="card">
-          <div className="section-title">Create a new post</div>
-          <form onSubmit={handleCreatePost} style={{ display: "grid", gap: 14 }}>
-            <label>
-              <div className="label">Title</div>
-              <input
-                className="field"
-                value={form.title}
-                onChange={(event) => handleFormChange("title", event.target.value)}
-                placeholder="Campaign highlight, product intro, etc."
-                required
-              />
-            </label>
-            <label>
-              <div className="label">Platform</div>
-              <select
-                className="field"
-                value={form.platform}
-                onChange={(event) => handleFormChange("platform", event.target.value)}
-              >
-                {platformOptions.map((platform) => (
-                  <option key={platform} value={platform}>
-                    {platform}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <div className="label">Scheduled date & time</div>
-              <input
-                className="field"
-                type="datetime-local"
-                value={form.scheduled_at}
-                onChange={(event) => handleFormChange("scheduled_at", event.target.value)}
-              />
-            </label>
-            <label>
-              <div className="label">Status</div>
-              <select
-                className="field"
-                value={form.status}
-                onChange={(event) => handleFormChange("status", event.target.value)}
-              >
-                {statusOptions.map((status) => (
-                  <option key={status.value} value={status.value}>
-                    {status.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <div className="label">Copy</div>
-              <textarea
-                className="field"
-                rows={5}
-                value={form.copy}
-                onChange={(event) => handleFormChange("copy", event.target.value)}
-                placeholder="Write the caption, CTA, and hashtags..."
-              />
-            </label>
-            <label>
-              <div className="label">Assets</div>
-              <input
-                className="field"
-                value={form.assets}
-                onChange={(event) => handleFormChange("assets", event.target.value)}
-                placeholder="Links to creative, drive folders, or notes"
-              />
-            </label>
-            <label>
-              <div className="label">Upload media</div>
-              <input
-                id="media-input"
-                className="field"
-                type="file"
-                accept="image/*,video/*"
-                multiple
-              />
-            </label>
-            <button className="button button-primary" type="submit">
-              {uploading ? "Uploading..." : "Add post to review"}
-            </button>
-            {error ? <p className="helper">{error}</p> : null}
-            {notice ? <p className="helper">{notice}</p> : null}
-          </form>
-        </section>
+        {user?.role === "admin" ? (
+          <section className="card">
+            <div className="section-title">Create a new post</div>
+            <form onSubmit={handleCreatePost} style={{ display: "grid", gap: 14 }}>
+              <label>
+                <div className="label">Title</div>
+                <input
+                  className="field"
+                  value={form.title}
+                  onChange={(event) => handleFormChange("title", event.target.value)}
+                  placeholder="Campaign highlight, product intro, etc."
+                  required
+                />
+              </label>
+              <label>
+                <div className="label">Platform</div>
+                <select
+                  className="field"
+                  value={form.platform}
+                  onChange={(event) => handleFormChange("platform", event.target.value)}
+                >
+                  {platformOptions.map((platform) => (
+                    <option key={platform} value={platform}>
+                      {platform}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <div className="label">Client</div>
+                <select
+                  className="field"
+                  value={form.client_id}
+                  onChange={(event) => handleFormChange("client_id", event.target.value)}
+                  required
+                >
+                  <option value="">Select client</option>
+                  {clients.map((client) => (
+                    <option key={client.id} value={client.id}>
+                      {client.username}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <div className="label">Scheduled date & time</div>
+                <input
+                  className="field"
+                  type="datetime-local"
+                  value={form.scheduled_at}
+                  onChange={(event) => handleFormChange("scheduled_at", event.target.value)}
+                />
+              </label>
+              <label>
+                <div className="label">Status</div>
+                <select
+                  className="field"
+                  value={form.status}
+                  onChange={(event) => handleFormChange("status", event.target.value)}
+                >
+                  {statusOptions.map((status) => (
+                    <option key={status.value} value={status.value}>
+                      {status.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <div className="label">Copy</div>
+                <textarea
+                  className="field"
+                  rows={5}
+                  value={form.copy}
+                  onChange={(event) => handleFormChange("copy", event.target.value)}
+                  placeholder="Write the caption, CTA, and hashtags..."
+                />
+              </label>
+              <label>
+                <div className="label">Assets</div>
+                <input
+                  className="field"
+                  value={form.assets}
+                  onChange={(event) => handleFormChange("assets", event.target.value)}
+                  placeholder="Links to creative, drive folders, or notes"
+                />
+              </label>
+              <label>
+                <div className="label">Upload media</div>
+                <input
+                  id="media-input"
+                  className="field"
+                  type="file"
+                  accept="image/*,video/*"
+                  multiple
+                />
+              </label>
+              <button className="button button-primary" type="submit">
+                {uploading ? "Uploading..." : "Add post to review"}
+              </button>
+              {error ? <p className="helper">{error}</p> : null}
+              {notice ? <p className="helper">{notice}</p> : null}
+            </form>
+          </section>
+        ) : (
+          <section className="card">
+            <div className="section-title">Review only</div>
+            <p className="helper">You can comment and approve assigned posts here.</p>
+          </section>
+        )}
 
         <section>
           <div className="section-title">Review queue</div>
@@ -366,7 +399,11 @@ export default function Dashboard() {
                   ) : null}
 
                   <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                    <button className="button button-secondary" type="button" onClick={() => handleApprove(post.id)}>
+                    <button
+                      className="button button-secondary"
+                      type="button"
+                      onClick={() => handleApprove(post.id)}
+                    >
                       Approve
                     </button>
                     <span className="helper">{post.comments?.length || 0} comments</span>

@@ -39,6 +39,7 @@ create table if not exists posts (
   copy text,
   assets text,
   media jsonb default '[]'::jsonb,
+  client_id uuid references app_users(id) on delete set null,
   author_username text,
   created_at timestamptz default now()
 );
@@ -69,6 +70,12 @@ create table if not exists sessions (
 
 ## Admin setup
 Use the login screen and the **Create admin** tab with your `ADMIN_SETUP_CODE`. This only works once.
+
+## New requirement: link posts to a client
+If you already created the `posts` table, run this migration in Supabase SQL editor:
+```
+alter table posts add column if not exists client_id uuid references app_users(id) on delete set null;
+```
 
 ## Notes
 - Supabase has upload limits by plan; “no max file limit” isn’t possible. We can raise client-side limits but Supabase enforces the true cap.
