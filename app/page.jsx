@@ -32,10 +32,10 @@ export default function Home() {
         body: JSON.stringify({ username, password })
       });
       const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || "Login failed");
+      if (!response.ok) throw new Error(payload.error || "Inloggen mislukt");
       router.replace("/dashboard");
     } catch (error) {
-      setMessage(error.message || "Something went wrong.");
+      setMessage(error.message || "Er ging iets mis.");
     } finally {
       setLoading(false);
     }
@@ -53,10 +53,10 @@ export default function Home() {
         body: JSON.stringify({ username, password, setupCode })
       });
       const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || "Setup failed");
+      if (!response.ok) throw new Error(payload.error || "Setup mislukt");
       router.replace("/dashboard");
     } catch (error) {
-      setMessage(error.message || "Something went wrong.");
+      setMessage(error.message || "Er ging iets mis.");
     } finally {
       setLoading(false);
     }
@@ -69,18 +69,18 @@ export default function Home() {
           <div className="brand-mark">BF</div>
           <div>
             <h1>Social Media Planner</h1>
-            <div className="post-meta">Brandfabriek client review hub</div>
+            <div className="post-meta">Brandfabriek reviewportaal</div>
           </div>
         </div>
         <span className="badge">Client review enabled</span>
       </div>
 
       <div className="card" style={{ maxWidth: 520 }}>
-        <div className="section-title">{mode === "signin" ? "Sign in" : "Create admin"}</div>
+        <div className="section-title">{mode === "signin" ? "Inloggen" : "Admin aanmaken"}</div>
         <p className="helper">
           {mode === "signin"
-            ? "Use your username and password to access the planner."
-            : "Create the first admin account using your setup code."}
+            ? "Gebruik je gebruikersnaam en wachtwoord."
+            : "Maak het eerste admin account aan met je setupcode."}
         </p>
 
         <div style={{ marginTop: 16, display: "flex", gap: 8 }}>
@@ -89,14 +89,14 @@ export default function Home() {
             className={`button ${mode === "signin" ? "button-primary" : "button-secondary"}`}
             onClick={() => setMode("signin")}
           >
-            Sign in
+            Inloggen
           </button>
           <button
             type="button"
             className={`button ${mode === "setup" ? "button-primary" : "button-secondary"}`}
             onClick={() => setMode("setup")}
           >
-            Create admin
+            Admin aanmaken
           </button>
         </div>
 
@@ -105,7 +105,7 @@ export default function Home() {
           style={{ marginTop: 20, display: "grid", gap: 14 }}
         >
           <label>
-            <div className="label">Username</div>
+            <div className="label">Gebruikersnaam</div>
             <input
               className="field"
               value={username}
@@ -114,7 +114,7 @@ export default function Home() {
             />
           </label>
           <label>
-            <div className="label">Password</div>
+            <div className="label">Wachtwoord</div>
             <input
               className="field"
               type="password"
@@ -125,7 +125,7 @@ export default function Home() {
           </label>
           {mode === "setup" ? (
             <label>
-              <div className="label">Setup code</div>
+              <div className="label">Setupcode</div>
               <input
                 className="field"
                 value={setupCode}
@@ -135,7 +135,7 @@ export default function Home() {
             </label>
           ) : null}
           <button className="button button-primary" type="submit" disabled={loading}>
-            {loading ? "Working..." : mode === "signin" ? "Sign in" : "Create admin"}
+            {loading ? "Bezig..." : mode === "signin" ? "Inloggen" : "Admin aanmaken"}
           </button>
         </form>
         {message ? <p className="helper" style={{ marginTop: 12 }}>{message}</p> : null}

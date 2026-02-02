@@ -80,6 +80,7 @@ alter table posts add column if not exists client_id uuid references app_users(i
 ## Notes
 - Supabase has upload limits by plan; “no max file limit” isn’t possible. We can raise client-side limits but Supabase enforces the true cap.
 - If you see "schema cache" errors after creating tables, wait a minute or trigger **Project Settings → API → Reload schema**.
+- Status values used: `draft`, `review`, `approved`, `changes`.
 
 ## Deployment
 Recommended stack: Vercel (frontend) + Supabase (auth/db). Add the same env vars in Vercel Project Settings.

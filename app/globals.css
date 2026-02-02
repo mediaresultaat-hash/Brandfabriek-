@@ -195,6 +195,11 @@ textarea {
   color: var(--success);
 }
 
+.status-changes {
+  background: #fdeceb;
+  color: var(--danger);
+}
+
 .post-card {
   display: flex;
   flex-direction: column;

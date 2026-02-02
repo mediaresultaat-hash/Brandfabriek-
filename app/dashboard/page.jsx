@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation";
 import clsx from "clsx";
 
 const statusOptions = [
-  { value: "draft", label: "Draft" },
+  { value: "draft", label: "Concept" },
   { value: "review", label: "In review" },
-  { value: "approved", label: "Approved" }
+  { value: "approved", label: "Goedgekeurd" },
+  { value: "changes", label: "Aanpassen" }
 ];
 
 const platformOptions = [
@@ -70,7 +71,7 @@ export default function Dashboard() {
     const response = await fetch("/api/posts");
     const payload = await response.json();
     if (!response.ok) {
-      setError(payload.error || "Could not load posts.");
+      setError(payload.error || "Kon posts niet laden.");
     } else {
       setPosts(payload.posts || []);
     }
@@ -114,14 +115,14 @@ export default function Dashboard() {
             body: JSON.stringify({ filename: file.name, contentType: file.type })
           });
           const uploadPayload = await uploadRes.json();
-          if (!uploadRes.ok) throw new Error(uploadPayload.error || "Upload failed");
+          if (!uploadRes.ok) throw new Error(uploadPayload.error || "Upload mislukt");
 
           const putRes = await fetch(uploadPayload.uploadUrl, {
             method: "PUT",
             headers: { "Content-Type": file.type || "application/octet-stream" },
             body: file
           });
-          if (!putRes.ok) throw new Error("Upload failed");
+          if (!putRes.ok) throw new Error("Upload mislukt");
 
           mediaUrls.push(uploadPayload.publicUrl);
         }
@@ -139,7 +140,7 @@ export default function Dashboard() {
         body: JSON.stringify(payload)
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Could not create post");
+      if (!response.ok) throw new Error(data.error || "Post kon niet worden aangemaakt");
 
       setForm({
         title: "",
@@ -154,21 +155,21 @@ export default function Dashboard() {
       if (fileInput) fileInput.value = "";
       await fetchPosts();
     } catch (err) {
-      setError(err.message || "Something went wrong.");
+      setError(err.message || "Er ging iets mis.");
     } finally {
       setUploading(false);
     }
   };
 
-  const handleApprove = async (postId) => {
+  const handleApprove = async (postId, status = "approved") => {
     const response = await fetch(`/api/posts/${postId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: "approved" })
+      body: JSON.stringify({ status })
     });
     const payload = await response.json();
     if (!response.ok) {
-      setError(payload.error || "Could not approve.");
+      setError(payload.error || "Kon status niet wijzigen.");
       return;
     }
 
@@ -186,7 +187,7 @@ export default function Dashboard() {
     });
     const payload = await response.json();
     if (!response.ok) {
-      setError(payload.error || "Could not add comment.");
+      setError(payload.error || "Kon reactie niet toevoegen.");
       return;
     }
 
@@ -206,15 +207,26 @@ export default function Dashboard() {
     });
     const payload = await response.json();
     if (!response.ok) {
-      setError(payload.error || "Could not create client.");
+      setError(payload.error || "Klant kon niet worden aangemaakt.");
       return;
     }
 
     setClientForm({ username: "", password: "" });
-    setNotice("Client account created.");
+    setNotice("Klantaccount aangemaakt.");
   };
 
   const isVideo = (url) => /\.(mp4|mov|webm|m4v)$/i.test(url || "");
+
+  const handleDeletePost = async (postId) => {
+    if (!confirm("Weet je zeker dat je deze post wilt verwijderen?")) return;
+    const response = await fetch(`/api/posts/${postId}`, { method: "DELETE" });
+    const payload = await response.json();
+    if (!response.ok) {
+      setError(payload.error || "Post kon niet worden verwijderd.");
+      return;
+    }
+    await fetchPosts();
+  };
 
   const summary = useMemo(() => {
     const counts = { draft: 0, review: 0, approved: 0 };
@@ -230,14 +242,14 @@ export default function Dashboard() {
         <div className="brand">
           <div className="brand-mark">BF</div>
           <div>
-            <h1>Planner & Client Review</h1>
-            <div className="post-meta">Welcome {user?.username}</div>
+            <h1>Planner & Klantreview</h1>
+            <div className="post-meta">Welkom {user?.username}</div>
           </div>
         </div>
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-          <span className="badge">{summary.review} waiting review</span>
+          <span className="badge">{summary.review} in review</span>
           <button className="button button-secondary" onClick={handleSignOut}>
-            Sign out
+            Uitloggen
           </button>
         </div>
       </div>
@@ -245,15 +257,15 @@ export default function Dashboard() {
       <div className="split">
         {user?.role === "admin" ? (
           <section className="card">
-            <div className="section-title">Create a new post</div>
+            <div className="section-title">Nieuwe post</div>
             <form onSubmit={handleCreatePost} style={{ display: "grid", gap: 14 }}>
               <label>
-                <div className="label">Title</div>
+                <div className="label">Titel</div>
                 <input
                   className="field"
                   value={form.title}
                   onChange={(event) => handleFormChange("title", event.target.value)}
-                  placeholder="Campaign highlight, product intro, etc."
+                  placeholder="Campagne highlight, productintro, etc."
                   required
                 />
               </label>
@@ -272,14 +284,14 @@ export default function Dashboard() {
                 </select>
               </label>
               <label>
-                <div className="label">Client</div>
+                <div className="label">Klant</div>
                 <select
                   className="field"
                   value={form.client_id}
                   onChange={(event) => handleFormChange("client_id", event.target.value)}
                   required
                 >
-                  <option value="">Select client</option>
+                  <option value="">Selecteer klant</option>
                   {clients.map((client) => (
                     <option key={client.id} value={client.id}>
                       {client.username}
@@ -288,7 +300,7 @@ export default function Dashboard() {
                 </select>
               </label>
               <label>
-                <div className="label">Scheduled date & time</div>
+                <div className="label">Geplande datum & tijd</div>
                 <input
                   className="field"
                   type="datetime-local"
@@ -317,7 +329,7 @@ export default function Dashboard() {
                   rows={5}
                   value={form.copy}
                   onChange={(event) => handleFormChange("copy", event.target.value)}
-                  placeholder="Write the caption, CTA, and hashtags..."
+                  placeholder="Schrijf de caption, CTA en hashtags..."
                 />
               </label>
               <label>
@@ -326,7 +338,7 @@ export default function Dashboard() {
                   className="field"
                   value={form.assets}
                   onChange={(event) => handleFormChange("assets", event.target.value)}
-                  placeholder="Links to creative, drive folders, or notes"
+                  placeholder="Links naar creatie, drive-mappen of notities"
                 />
               </label>
               <label>
@@ -340,7 +352,7 @@ export default function Dashboard() {
                 />
               </label>
               <button className="button button-primary" type="submit">
-                {uploading ? "Uploading..." : "Add post to review"}
+                {uploading ? "Bezig met uploaden..." : "Post toevoegen"}
               </button>
               {error ? <p className="helper">{error}</p> : null}
               {notice ? <p className="helper">{notice}</p> : null}
@@ -348,17 +360,17 @@ export default function Dashboard() {
           </section>
         ) : (
           <section className="card">
-            <div className="section-title">Review only</div>
-            <p className="helper">You can comment and approve assigned posts here.</p>
+            <div className="section-title">Alleen review</div>
+            <p className="helper">Je kunt reageren en posts goed- of afkeuren.</p>
           </section>
         )}
 
         <section>
-          <div className="section-title">Review queue</div>
+          <div className="section-title">Reviewlijst</div>
           {loading ? (
-            <div className="card">Loading posts...</div>
+            <div className="card">Posts laden...</div>
           ) : posts.length === 0 ? (
-            <div className="card">No posts yet. Add the first one.</div>
+            <div className="card">Nog geen posts. Voeg de eerste toe.</div>
           ) : (
             <div className="grid">
               {posts.map((post) => (
@@ -367,14 +379,15 @@ export default function Dashboard() {
                     <div>
                       <div style={{ fontWeight: 600 }}>{post.title}</div>
                       <div className="post-meta">
-                        {post.platform} · {post.scheduled_at ? new Date(post.scheduled_at).toLocaleString() : "Unscheduled"}
+                        {post.platform} · {post.scheduled_at ? new Date(post.scheduled_at).toLocaleString() : "Niet gepland"}
                       </div>
                     </div>
                     <span
                       className={clsx("status", {
                         "status-draft": post.status === "draft",
                         "status-review": post.status === "review",
-                        "status-approved": post.status === "approved"
+                        "status-approved": post.status === "approved",
+                        "status-changes": post.status === "changes"
                       })}
                     >
                       {post.status}
@@ -402,11 +415,27 @@ export default function Dashboard() {
                     <button
                       className="button button-secondary"
                       type="button"
-                      onClick={() => handleApprove(post.id)}
+                      onClick={() => handleApprove(post.id, "approved")}
                     >
-                      Approve
+                      Goedkeuren
                     </button>
-                    <span className="helper">{post.comments?.length || 0} comments</span>
+                    <button
+                      className="button button-secondary"
+                      type="button"
+                      onClick={() => handleApprove(post.id, "changes")}
+                    >
+                      Afkeuren
+                    </button>
+                    {user?.role === "admin" ? (
+                      <button
+                        className="button button-ghost"
+                        type="button"
+                        onClick={() => handleDeletePost(post.id)}
+                      >
+                        Verwijderen
+                      </button>
+                    ) : null}
+                    <span className="helper">{post.comments?.length || 0} reacties</span>
                   </div>
 
                   {post.comments?.length ? (
@@ -421,7 +450,7 @@ export default function Dashboard() {
                   ) : null}
 
                   <div>
-                    <div className="label">Add comment</div>
+                    <div className="label">Reactie toevoegen</div>
                     <div style={{ display: "flex", gap: 8 }}>
                       <input
                         className="field"
@@ -429,14 +458,14 @@ export default function Dashboard() {
                         onChange={(event) =>
                           setCommentDrafts((prev) => ({ ...prev, [post.id]: event.target.value }))
                         }
-                        placeholder="Client feedback, edits, or approvals"
+                        placeholder="Feedback, wijzigingen of akkoord"
                       />
                       <button
                         className="button button-primary"
                         type="button"
                         onClick={() => handleAddComment(post.id)}
                       >
-                        Send
+                        Versturen
                       </button>
                     </div>
                   </div>
@@ -449,10 +478,10 @@ export default function Dashboard() {
 
       {user?.role === "admin" ? (
         <div className="card" style={{ marginTop: 24 }}>
-          <div className="section-title">Create client login</div>
+          <div className="section-title">Klantaccount aanmaken</div>
           <form onSubmit={handleCreateClient} style={{ display: "grid", gap: 14, maxWidth: 420 }}>
             <label>
-              <div className="label">Client username</div>
+              <div className="label">Klant gebruikersnaam</div>
               <input
                 className="field"
                 value={clientForm.username}
@@ -461,7 +490,7 @@ export default function Dashboard() {
               />
             </label>
             <label>
-              <div className="label">Temporary password</div>
+              <div className="label">Tijdelijk wachtwoord</div>
               <input
                 className="field"
                 type="password"
@@ -471,7 +500,7 @@ export default function Dashboard() {
               />
             </label>
             <button className="button button-secondary" type="submit">
-              Create client
+              Klant aanmaken
             </button>
           </form>
         </div>

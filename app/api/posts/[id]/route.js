@@ -33,3 +33,17 @@ export async function PATCH(request, { params }) {
 
   return Response.json({ ok: true });
 }
+
+export async function DELETE(_request, { params }) {
+  const sessionUser = await getSessionUser();
+  if (!sessionUser || sessionUser.role !== "admin") {
+    return Response.json({ error: "Unauthorized" }, { status: 403 });
+  }
+
+  const { error } = await supabaseServer.from("posts").delete().eq("id", params.id);
+  if (error) {
+    return Response.json({ error: error.message }, { status: 400 });
+  }
+
+  return Response.json({ ok: true });
+}
