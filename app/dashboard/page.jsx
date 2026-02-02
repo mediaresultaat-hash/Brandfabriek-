@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import clsx from "clsx";
-import { supabase } from "../../lib/supabaseClient";
 
 const statusOptions = [
   { value: "draft", label: "Draft" },
@@ -26,63 +25,58 @@ export default function Dashboard() {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [form, setForm] = useState({
     title: "",
     platform: "Instagram",
     scheduled_at: "",
     status: "review",
     copy: "",
-    assets: ""
+    assets: "",
+    media: []
   });
   const [commentDrafts, setCommentDrafts] = useState({});
+  const [clientForm, setClientForm] = useState({ username: "", password: "" });
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     let mounted = true;
 
     const init = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (!data?.session) {
+      const response = await fetch("/api/auth/me");
+      if (!response.ok) {
         router.replace("/");
         return;
       }
+      const payload = await response.json();
       if (mounted) {
-        setUser(data.session.user);
+        setUser(payload.user);
       }
       await fetchPosts();
     };
 
     init();
 
-    const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session) {
-        router.replace("/");
-      }
-    });
-
     return () => {
       mounted = false;
-      subscription?.subscription?.unsubscribe();
     };
   }, [router]);
 
   const fetchPosts = async () => {
     setLoading(true);
     setError("");
-    const { data, error: fetchError } = await supabase
-      .from("posts")
-      .select("id,title,platform,scheduled_at,status,copy,assets,created_at,comments(id,body,author_email,created_at)")
-      .order("scheduled_at", { ascending: true });
-
-    if (fetchError) {
-      setError(fetchError.message);
+    const response = await fetch("/api/posts");
+    const payload = await response.json();
+    if (!response.ok) {
+      setError(payload.error || "Could not load posts.");
     } else {
-      setPosts(data || []);
+      setPosts(payload.posts || []);
     }
     setLoading(false);
   };
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
+    await fetch("/api/auth/logout", { method: "POST" });
     router.replace("/");
   };
 
@@ -93,38 +87,78 @@ export default function Dashboard() {
   const handleCreatePost = async (event) => {
     event.preventDefault();
     setError("");
+    setNotice("");
 
-    const payload = {
-      ...form,
-      scheduled_at: form.scheduled_at ? new Date(form.scheduled_at).toISOString() : null,
-      author_email: user?.email || ""
-    };
+    try {
+      let mediaUrls = form.media || [];
+      if (uploading) return;
 
-    const { error: insertError } = await supabase.from("posts").insert(payload);
-    if (insertError) {
-      setError(insertError.message);
-      return;
+      const fileInput = document.getElementById("media-input");
+      const files = Array.from(fileInput?.files || []);
+      if (files.length > 0) {
+        setUploading(true);
+        mediaUrls = [];
+        for (const file of files) {
+          const uploadRes = await fetch("/api/media/upload-url", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ filename: file.name, contentType: file.type })
+          });
+          const uploadPayload = await uploadRes.json();
+          if (!uploadRes.ok) throw new Error(uploadPayload.error || "Upload failed");
+
+          const putRes = await fetch(uploadPayload.uploadUrl, {
+            method: "PUT",
+            headers: { "Content-Type": file.type || "application/octet-stream" },
+            body: file
+          });
+          if (!putRes.ok) throw new Error("Upload failed");
+
+          mediaUrls.push(uploadPayload.publicUrl);
+        }
+      }
+
+      const payload = {
+        ...form,
+        scheduled_at: form.scheduled_at ? new Date(form.scheduled_at).toISOString() : null,
+        media: mediaUrls
+      };
+
+      const response = await fetch("/api/posts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Could not create post");
+
+      setForm({
+        title: "",
+        platform: "Instagram",
+        scheduled_at: "",
+        status: "review",
+        copy: "",
+        assets: "",
+        media: []
+      });
+      if (fileInput) fileInput.value = "";
+      await fetchPosts();
+    } catch (err) {
+      setError(err.message || "Something went wrong.");
+    } finally {
+      setUploading(false);
     }
-
-    setForm({
-      title: "",
-      platform: "Instagram",
-      scheduled_at: "",
-      status: "review",
-      copy: "",
-      assets: ""
-    });
-    await fetchPosts();
   };
 
   const handleApprove = async (postId) => {
-    const { error: updateError } = await supabase
-      .from("posts")
-      .update({ status: "approved" })
-      .eq("id", postId);
-
-    if (updateError) {
-      setError(updateError.message);
+    const response = await fetch(`/api/posts/${postId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "approved" })
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      setError(payload.error || "Could not approve.");
       return;
     }
 
@@ -135,20 +169,42 @@ export default function Dashboard() {
     const body = commentDrafts[postId]?.trim();
     if (!body) return;
 
-    const { error: commentError } = await supabase.from("comments").insert({
-      post_id: postId,
-      body,
-      author_email: user?.email || ""
+    const response = await fetch("/api/comments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ post_id: postId, body })
     });
-
-    if (commentError) {
-      setError(commentError.message);
+    const payload = await response.json();
+    if (!response.ok) {
+      setError(payload.error || "Could not add comment.");
       return;
     }
 
     setCommentDrafts((prev) => ({ ...prev, [postId]: "" }));
     await fetchPosts();
   };
+
+  const handleCreateClient = async (event) => {
+    event.preventDefault();
+    setError("");
+    setNotice("");
+
+    const response = await fetch("/api/auth/create-user", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...clientForm, role: "client" })
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      setError(payload.error || "Could not create client.");
+      return;
+    }
+
+    setClientForm({ username: "", password: "" });
+    setNotice("Client account created.");
+  };
+
+  const isVideo = (url) => /\.(mp4|mov|webm|m4v)$/i.test(url || "");
 
   const summary = useMemo(() => {
     const counts = { draft: 0, review: 0, approved: 0 };
@@ -165,7 +221,7 @@ export default function Dashboard() {
           <div className="brand-mark">BF</div>
           <div>
             <h1>Planner & Client Review</h1>
-            <div className="post-meta">Welcome {user?.email}</div>
+            <div className="post-meta">Welcome {user?.username}</div>
           </div>
         </div>
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
@@ -246,10 +302,21 @@ export default function Dashboard() {
                 placeholder="Links to creative, drive folders, or notes"
               />
             </label>
+            <label>
+              <div className="label">Upload media</div>
+              <input
+                id="media-input"
+                className="field"
+                type="file"
+                accept="image/*,video/*"
+                multiple
+              />
+            </label>
             <button className="button button-primary" type="submit">
-              Add post to review
+              {uploading ? "Uploading..." : "Add post to review"}
             </button>
             {error ? <p className="helper">{error}</p> : null}
+            {notice ? <p className="helper">{notice}</p> : null}
           </form>
         </section>
 
@@ -284,6 +351,19 @@ export default function Dashboard() {
                   {post.assets ? (
                     <div className="post-meta">Assets: {post.assets}</div>
                   ) : null}
+                  {post.media?.length ? (
+                    <div className="media-grid">
+                      {post.media.map((url) =>
+                        isVideo(url) ? (
+                          <video key={url} controls className="media-item">
+                            <source src={url} />
+                          </video>
+                        ) : (
+                          <img key={url} src={url} alt="Post media" className="media-item" />
+                        )
+                      )}
+                    </div>
+                  ) : null}
 
                   <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
                     <button className="button button-secondary" type="button" onClick={() => handleApprove(post.id)}>
@@ -296,7 +376,7 @@ export default function Dashboard() {
                     <div className="comment-list">
                       {post.comments.map((comment) => (
                         <div className="comment-item" key={comment.id}>
-                          <div style={{ fontWeight: 600 }}>{comment.author_email || "Client"}</div>
+                          <div style={{ fontWeight: 600 }}>{comment.author_username || "Client"}</div>
                           <div>{comment.body}</div>
                         </div>
                       ))}
@@ -329,6 +409,36 @@ export default function Dashboard() {
           )}
         </section>
       </div>
+
+      {user?.role === "admin" ? (
+        <div className="card" style={{ marginTop: 24 }}>
+          <div className="section-title">Create client login</div>
+          <form onSubmit={handleCreateClient} style={{ display: "grid", gap: 14, maxWidth: 420 }}>
+            <label>
+              <div className="label">Client username</div>
+              <input
+                className="field"
+                value={clientForm.username}
+                onChange={(event) => setClientForm((prev) => ({ ...prev, username: event.target.value }))}
+                required
+              />
+            </label>
+            <label>
+              <div className="label">Temporary password</div>
+              <input
+                className="field"
+                type="password"
+                value={clientForm.password}
+                onChange={(event) => setClientForm((prev) => ({ ...prev, password: event.target.value }))}
+                required
+              />
+            </label>
+            <button className="button button-secondary" type="submit">
+              Create client
+            </button>
+          </form>
+        </div>
+      ) : null}
     </main>
   );
 }

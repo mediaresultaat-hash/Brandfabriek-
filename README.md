@@ -8,13 +8,15 @@ Small client-facing social media planner with login, review, comments, and appro
 
 ## Setup
 1. Create a Supabase project.
-2. In Supabase Auth, enable Email/Password sign-in.
-3. Run the SQL below in Supabase SQL editor.
+2. Run the SQL below in Supabase SQL editor.
+3. Create a Storage bucket named `post-media` (set to **public** for easiest sharing).
 4. Add env vars to a `.env.local` file in the project root.
 
 ```
 NEXT_PUBLIC_SUPABASE_URL=your_project_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+ADMIN_SETUP_CODE=your_one_time_setup_code
 ```
 
 5. Install deps and run.
@@ -36,7 +38,8 @@ create table if not exists posts (
   status text not null default 'review',
   copy text,
   assets text,
-  author_email text,
+  media jsonb default '[]'::jsonb,
+  author_username text,
   created_at timestamptz default now()
 );
 
@@ -44,41 +47,32 @@ create table if not exists comments (
   id uuid primary key default uuid_generate_v4(),
   post_id uuid references posts(id) on delete cascade,
   body text not null,
-  author_email text,
+  author_username text,
+  created_at timestamptz default now()
+);
+
+create table if not exists app_users (
+  id uuid primary key default uuid_generate_v4(),
+  username text unique not null,
+  password_hash text not null,
+  role text not null check (role in ('admin', 'client')),
+  created_at timestamptz default now()
+);
+
+create table if not exists sessions (
+  token uuid primary key,
+  user_id uuid references app_users(id) on delete cascade,
+  expires_at timestamptz,
   created_at timestamptz default now()
 );
 ```
 
-## Row Level Security (simple, two-user setup)
-```
-alter table posts enable row level security;
-alter table comments enable row level security;
+## Admin setup
+Use the login screen and the **Create admin** tab with your `ADMIN_SETUP_CODE`. This only works once.
 
-create policy "Authenticated read" on posts
-  for select
-  to authenticated
-  using (true);
-
-create policy "Authenticated insert" on posts
-  for insert
-  to authenticated
-  with check (true);
-
-create policy "Authenticated update" on posts
-  for update
-  to authenticated
-  using (true);
-
-create policy "Authenticated read" on comments
-  for select
-  to authenticated
-  using (true);
-
-create policy "Authenticated insert" on comments
-  for insert
-  to authenticated
-  with check (true);
-```
+## Notes
+- Supabase has upload limits by plan; “no max file limit” isn’t possible. We can raise client-side limits but Supabase enforces the true cap.
+- If you see "schema cache" errors after creating tables, wait a minute or trigger **Project Settings → API → Reload schema**.
 
 ## Deployment
 Recommended stack: Vercel (frontend) + Supabase (auth/db). Add the same env vars in Vercel Project Settings.
